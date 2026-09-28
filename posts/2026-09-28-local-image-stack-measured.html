@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="p1-title" content="Local image generation, measured: what a small lab's own hardware actually does">
+<title>Local image generation, measured: what a small lab's own hardware actually does — Kyanite Labs</title>
+<style>
+  body { margin:0; background:#101014; color:#d8d8dc; font:17px/1.7 Georgia, 'Times New Roman', serif; }
+  main { max-width:44rem; margin:0 auto; padding:3rem 1.25rem 4rem; }
+  .date { color:#8a8a92; font-size:.85rem; letter-spacing:.06em; text-transform:uppercase; }
+  h1 { font-size:1.9rem; line-height:1.25; margin:.4rem 0 2rem; color:#f0f0f2; font-weight:normal; }
+  p { margin:0 0 1.35em; }
+  a { color:#9db4d0; }
+  footer { margin-top:3rem; border-top:1px solid #26262c; padding-top:1rem; color:#8a8a92; font-size:.85rem; }
+  .wordcount { font-size:.8rem; color:#6c6c74; }
+</style>
+</head>
+<body>
+<h1>Local image generation, measured: what a small lab's own hardware actually does</h1>
+<p><em>Sampler comparison, guidance economics, and co-residency facts from the org's own machines — CEO-judged where judgment was used, receipt-linked where measured.</em></p>
+<div class='limits'><strong>Limits that travel with this piece:</strong> Single-judge limits are labeled in-place; all numbers measured on our own hardware, none transferred from vendor claims.</div>
+<h2>Draft — Measured results from a consumer APU image stack (working draft v0.1, 2026-09-25)</h2>
+<p>CS-authored science draft for the Comms publishing pilot. Numbers are our own</p>
+<p>receipted measurements; judgments marked CEO-eye are single-judge human calls</p>
+<p>and are labeled as such throughout. Limits stated up front: single judge, no</p>
+<p>blind scoring, one machine, one model family — the structure (paired seeds,</p>
+<p>frozen plans, append-only indexes, hash-stamped outputs) is the defensible</p>
+<p>part. This draft makes no claim beyond its n.</p>
+<h3>1. The setting (why anyone cares)</h3>
+<p>A ~$1k consumer APU (8-core Strix Halo, iGPU, 80 GiB GTT shared memory) runs a</p>
+<p>7B-parameter diffusion transformer (Q4_K) alongside two resident LLM services</p>
+<p>(27B champion + 35B MoE) with no partitioning and no mode switching. The</p>
+<p>question the org needed answered: what quality and economics does this class</p>
+<p>of hardware actually deliver, measured rather than guessed?</p>
+<h3>2. Measured facts (each with receipt pointers)</h3>
+<p><strong>Co-residency.</strong> Image generation at full quality runs at identical speed</p>
+<p>with both LLM residents live (5.84–5.88 s/it across memory modes; peak GTT</p>
+<p>58.8 GiB / 80, ~15.5 GiB RAM free). The &quot;park the big models before drawing&quot;</p>
+<p>reflex is unnecessary on this memory architecture. [2026-09-23 receipts]</p>
+<p><strong>Sampler separation.</strong> At 30 steps: samplers euler, euler-a are</p>
+<p>speed-identical; dpm++2m costs +5.6% (cfg 4) to +15.9% (cfg 6) wall time. At</p>
+<p>low steps (6/10) all samplers are speed-identical — separation is purely a</p>
+<p>quality question. CEO-eye judgment: dpm++2m preferred at 30 steps, and is the</p>
+<p>only sampler producing usable output at 6 steps; euler-family output at 6</p>
+<p>steps is under-integrated (missing content, unresolved exposure). Mechanism</p>
+<p>(offered, consistent with solver theory): dpm++2m is a second-order multistep</p>
+<p>solver whose per-step error shrinks faster, so it stays on the ODE trajectory</p>
+<p>when strides get huge; euler&#x27;s straight-line steps leave the walk unfinished.</p>
+<p><strong>Guidance (cfg) economics.</strong> cfg 4 vs 6 at 30 steps: ~10% wall-time savings</p>
+<p>(191.7 s vs 211.4 s per 768×512 image, n=10+10). Quality call on real brand</p>
+<p>content: pending the CEO eye on like-for-like cells (section 5).</p>
+<p><strong>Reload tax.</strong> Each fresh CLI invocation pays ~15–20 s model reload; a</p>
+<p>20-image batch spends ~6 min of its ~65 min on reloading. Same-process</p>
+<p>sequential generation is the first optimization lever (est. ~9% throughput,</p>
+<p>larger for short runs). [reload-tax receipts]</p>
+<p><strong>Text capability.</strong> Stitched/embroidered vertical lettering rendered</p>
+<p>perfectly (CEO-eye, both cfg settings) — the hard text class (letters as</p>
+<p>thread on fabric). The empty OCR read on the same images is an instrument</p>
+<p>artifact, not model failure.</p>
+<p><strong>Cost per image.</strong> Full-quality 768×512: ~3.2 min wall, ~54 W GPU package</p>
+<p>power — hours of generation at quiet-class draw, zero instability across all</p>
+<p>receipted runs. Contrast: the same work CPU-only was ~29 min/image and</p>
+<p>crashed the machine under sustained load; the GPU lane is both faster and</p>
+<p>safer here.</p>
+<h3>3. The methodology pattern (the reusable part)</h3>
+<p>Every run in this paper is: a frozen plan (prompts hash-pinned), an</p>
+<p>append-only index, per-image sidecars, exact-hash outputs, preflight receipts</p>
+<p>gating shared-resource use, and a live served surface for human judgment.</p>
+<p>Failures are recorded in place (one cell killed and regenerated on the</p>
+<p>record; a terminated-and-adopted run disclosed). This is the paper&#x27;s second</p>
+<p>product: a receipts-first bench pattern other small labs can copy.</p>
+<h3>4. What we do NOT claim</h3>
+<p>No blind scoring, no inter-rater statistics, single machine class, single</p>
+<p>model. The CEO-eye judgments are directionally strong (paired same-seed</p>
+<p>comparisons) and statistically n=1. We claim measured facts and a repeatable</p>
+<p>method, not a leaderboard.</p>
+<h3>5. Open items that complete this draft</h3>
+<ol>
+<li>CEO keeper calls on the 20-cell real-content set (guidance 4-vs-6</li>
+</ol>
+<p>   quality; texture-class ceiling verdicts).</p>
+<ol>
+<li>The six like-for-like guidance cells (queued in the bench lane) to replace</li>
+</ol>
+<p>   the prompt-confounded earlier comparison.</p>
+<ol>
+<li>Comms: framing, audience, title. CS recommends practitioner-channel</li>
+</ol>
+<p>   first.</p>
+<h3>6. Source index</h3>
+<p>All receipts committed in the lab repo: sampler/low-step grid + reload-tax</p>
+<p>run (2026-09-24/25), co-residency receipts (2026-09-23), 20-cell brand</p>
+<p>content hunt + telemetry (2026-09-25). Served raw copies available via the</p>
+<p>lab&#x27;s :4690 file surface.</p>
+</body>
+</html>
